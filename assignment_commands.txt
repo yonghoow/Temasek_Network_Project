@@ -1,0 +1,100 @@
+/1) configure VLAN 10 and VLAN 20 on all 4 switches
+/2) configure all switch to switch and switch to router links as TRUNK port
+/3) for PC on VLAN 10 configure them as Access port VLAN 10 (do second)
+/4) for PC on VLAN 20 configure them as Access port VLAN 20 (do second)
+/5) configure Etherchannel LACP between switch CS-1 and CS-2 (do first)
+/6) Configure Router sub-interface and HSRP group1 for VLAN 10 on both routers
+/7) Configure Router sub-interface and HSRP group2 for VLAN 20 on both routers
+8) Configure all PC default-gateway to Standby IP
+9) Configure static route to Internet on both Routers
+
+
+No ip domain lookup
+====================
+R1(config)#no ip domain-lookup
+
+Create VLANs 10 and 20 in the all switches
+==========================================
+Switch1# configure terminal
+Switch1(config)# vlan 10
+Switch1(config-vlan)# name vlan10
+Switch1(config)# vlan 20
+Switch1(config-vlan)# name vlan20
+Switch1(config-vlan)# end
+
+Create Trunk Port G0/1 and G0/2
+===============================
+Switch1(config)# interface range G0/1 - 2
+Switch1(config-if)# switchport mode trunk
+Switch1(config-if)# end
+
+Assign Ports Fe0/10 in VLAN 10 and Fe0/15 in VLAN 20
+====================================================
+Switch1(config)# interface fastethernet0/10
+Switch1(config-if)# switchport mode access
+Switch1(config-if)# switchport access vlan 10
+Switch1(config-if)# end
+Switch1(config)# interface fastethernet0/15
+Switch1(config-if)# switchport mode access
+Switch1(config-if)# switchport access vlan 20
+Switch1(config-if)# end
+
+Etherchannel LACP configuration 
+================================
+Switch(config)# interface range G1/1/1 - 2
+Switch(config-if-range)# shutdown
+Switch(config-if-range)# channel-group 1 mode active
+Switch(config-if-range)# no shutdown
+Switch(config-if-range)# interface port-channel 1
+Switch(config-if)# switchport mode trunk
+Switch(config-if)# switchport trunk allowed vlan 10,20
+
+Show LACP
+==========
+Switch# show etherchannel summary
+
+Router Sub-interface
+=====================
+First, we enable the physical interface:
+========================================
+Router(config)# interface G0/1
+Router(config-if)# no shutdown
+
+Next, we create and configure the first Sub-interface for VLAN 10:
+=================================================================
+Router1(config)# interface G0/1.10 
+Router1(config-subif)# encapsulation dot1Q 10
+Router1(config-subif)# ip address 172.16.10.1 255.255.255.0
+
+
+Similarly, we will also configure the Sub-interface for VLAN 20:
+================================================================
+Router1(config)# interface G0/1.20
+Router1(config-subif)# encapsulation dot1Q 20
+Router1(config-subif)# ip address 172.16.20.1 255.255.255.0
+
+
+Configure HSRP on the G0/1 LAN interface of R1.
+================================================
+R1(config)# interface g0/1
+R1(config-if)# standby version 2
+R1(config-if)# standby 1 ip 172.16.10.1
+R1(config-if)# standby 1 priority 150
+R1(config-if)# standby 1 preempt
+
+R1(config-if)# standby 2 ip 172.16.20.1
+R1(config-if)# standby 2 priority 150
+R1(config-if)# standby 2 preempt
+
+Show standby router information
+================================
+R1# show standby brief
+R1# show standby G0/1
+
+
+Static route
+============
+
+R1(config-if)# ip route 0.0.0.0 0.0.0.0 GigabitEthernet0/0
+
+
