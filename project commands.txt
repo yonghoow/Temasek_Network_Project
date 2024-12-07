@@ -1,0 +1,379 @@
+INTW Project
+
+VLAN 100 PC
+===========
+22.22.22.174/28
+mask: 255.255.255.240
+default gateway: 22.22.22.161
+
+
+VLAN 200 PC
+===========
+22.22.22.158/27
+mask: 255.255.255.224
+default gateway: 22.22.22.129
+
+SW-3 VLAN 
+=========
+0/1 - 0/10 to VLAN 100
+0/11 - 0/20 to VLAN 200
+
+Create VLANs 100 and 200 in SW-3
+=================================
+Switch1(config)# vlan 100
+Switch1(config-vlan)# name vlan100
+Switch1(config)# vlan 200
+Switch1(config-vlan)# name vlan200
+Switch1(config-vlan)# end
+
+Assign Ports f0/1 - 10 in VLAN 100 and f0/11 - 20 in VLAN 200
+================================================================
+Switch3(config)# interface range f0/1 - 10
+Switch3(config-if)# switchport mode access
+Switch3(config-if)# switchport access vlan 100
+Switch3(config-if)# exit
+
+Switch3(config)# interface range f0/11 - 20
+Switch3(config-if)# switchport mode access
+Switch3(config-if)# switchport access vlan 200
+Switch3(config-if)# exit
+
+The interconnection link between SW-1 and SW-2 is to be configured as Layer 3 
+and the rest of the interconnection links are to be configured as Layer 2.
+===========================================================================
+
+Remove port channel
+====================
+Switch(config)#no interface port-channel 1
+
+Configure Etherchannel LACP (level 3)
+=====================================
+Switch(config)# interface range G1/0/1 - 2
+Switch(config-if-range)# no switchport
+Switch(config-if-range)# shutdown
+Switch(config-if-range)# channel-group 1 mode active
+Switch(config-if-range)# exit
+Switch(config)# interface port-channel 1
+Switch(config-if)# ip address 22.22.22.189 255.255.255.252
+Switch(config-if)# int range G1/0/1 - 2
+Switch(config-if-range)# no shutdown
+
+
+Configure Etherchannel LACP (level 2)
+=====================================
+Set ports to trunking mode
+==========================
+Switch(config)# interface range g1/0/22 - 23
+Switch(config-if-range)# switchport mode trunk
+
+show trunk
+==========
+Switch1# show interface trunk
+
+Configure switchports with LACP
+===================================================
+Switch(config)# interface range g1/0/22 - 23
+Switch(config-if-range)# channel-group 1 mode active
+
+Configure enable secret password for all Cisco network devices to Ciscoenpass
+==============================================================================
+Switch(config)# enable secret Ciscoenpass
+
+Configure console password for all Cisco network devices to Ciscoconpass
+========================================================================
+Switch(config)# line console 0
+Switch(config)# password Ciscoconpass
+Switch(config)# login
+
+Configure vty password for all Cisco network devices to Ciscovtypass
+====================================================================
+Switch(config)# line vty 0 15
+Switch(config)# password Ciscovtypass
+
+All passwords are to be encrypted
+=================================
+Switch(config)# service password-encryption
+
+Configure VLAN100 and VLAN200 on the switches. Ensure that interface VLAN1 is shutdown on all switches. Secure unused switchports on all switches by shutting them down as well.
+=====================================================================================================================
+Switch(config)# int vlan 1
+Switch(config-if)# shutdown 
+
+Move all unused access switch ports to VLAN999 (BlackHole)
+==========================================================
+Switch1(config)# vlan 999
+Switch1(config-vlan)# name BlackHole
+
+Switch3(config)# interface range f0/1 - 10
+Switch3(config-if)# switchport mode access
+Switch3(config-if)# switchport access vlan 999
+Switch3(config-if)# end
+
+Configure secure trunk between SW-1, SW-2 and SW-3. Configure VLAN99 (i.e. MGMT) as native VLAN for these links.
+================================================================================================================
+Switch1(config)# vlan 99
+Switch1(config-vlan)# name MGMT
+
+SW-1(config)# interface port-channel 2
+SW-1(config-if)# switchport trunk native vlan 99
+SW-1(config-if)# switchport nonegotiate
+SW-1(config-if)# no shutdown
+
+On SW-3, implement port security on all active switchports. Allow a maximum of 4 MAC addresses to be learned on the ports. Ensure that all learned MAC addresses on the port will be added to the running configuration. Configure the port security violation mode to drop packets from MAC addresses that exceed the maximum and generate a Syslog entry. However do not disable these ports.
+==============================================================================================================================
+
+Activate port security on all the active access ports on switch SW-1
+====================================================================
+SW-1(config)#interface range f0/6, f0/12
+SW-1(config-if-range)#switchport mode access
+SW-1(config-if-range)#switchport port-security
+
+Configure the active ports to allow a maximum of 4 MAC addresses to be learned on the ports.
+============================================================================================
+SW-1(config-if-range)#switchport port-security maximum 4
+
+Configure each active access port so that it will automatically add the MAC addresses learned on the port to the running configuration.
+=========================================================================================================================
+SW-1(config-if-range)#switchport port-security mac-address 0001.43BC.A5CD or 0007.EC45.EE65
+SW-1(config-if-range)#switchport port-security mac-address sticky
+
+
+Configure the port security violation mode to drop packets from MAC addresses that exceed the maximum, generate a Syslog entry, but not disable the ports.
+=========================================================================================================================
+SW-1(config-if-range)#switchport port-security violation restrict
+
+Show switchport security
+=========================
+Switch#show port-security
+
+Configure all trunk ports on all switches as DHCP snooping trusted ports.
+=========================================================================
+SW-1(config)#interface range f0/21 - 24
+SW-1(config-if-range)#ip dhcp snooping trust
+
+Configure on all PortFast and BPDU guard on all access points on SW-3. Also on SW-3, limit untrusted ports on all access ports to 10 DHCP packets per second. Enable DHCP snooping for all VLANs.
+==========================================================================================================================
+(config)#interface range FastEthernet0/1-20
+SW-1(config-if-range)#spanning-tree portfast
+SW-1(config-if-range)#spanning-tree bpduguard enable
+
+SW-1(config)#interface range FastEthernet0/1-20
+SW-1(config-if-range)#ip dhcp snooping limit rate 10
+
+SW-2(config)#ip dhcp snooping
+SW-2(config)#ip dhcp snooping vlan 100,200,99
+
+Configure HSRP on both SW-1 and SW-2 for both VLAN100 and VLAN200
+==================================================================
+
+HSRP on SW-1
+=============
+SW-1(config)# interface Vlan100
+SW-1(config-if)# ip address 22.22.22.162 255.255.255.240
+SW-1(config-if)# standby version 2
+SW-1(config-if)# standby 1 ip 22.22.22.161
+SW-1(config-if)# standby 1 priority 150
+SW-1(config-if)# standby 1 preempt
+ 
+SW-1(config)# interface Vlan200
+SW-1(config-if)# ip address 22.22.22.132 255.255.255.224
+SW-1(config-if)# standby version 2
+SW-1(config-if)# standby 2 ip 22.22.22.129
+
+HSRP on SW-2
+=============
+SW-2(config)# interface Vlan100
+SW-2(config-if)# ip address 22.22.22.164 255.255.255.240
+SW-2(config-if)# standby version 2
+SW-2(config-if)# standby 1 ip 22.22.22.161
+ 
+SW-2(config)# interface Vlan200
+SW-2(config-if)# ip address 22.22.22.130 255.255.255.224
+SW-2(config-if)# standby version 2
+SW-2(config-if)# standby 2 ip 22.22.22.129
+SW-1(config-if)# standby 2 priority 150
+SW-1(config-if)# standby 2 preempt
+
+Show standby router information
+================================
+SW-1# show standby brief
+
+Configure extended named ACL on your site routers such that all your site’s PCs are allowed to view the HTTPS webpage hosted on N1 server (located within the Internet cloud) and not the HTTP webpage. All other traffic are allowed and should not be affected by this ACL. N1 server ip: 10.10.10.2/24
+=================================================================================================================
+R1(config)# ip access-list extended HTTPS_ONLY
+
+block http (port 80), allow https (port 443), all other allowed
+================================================================
+R1(config-ext-nacl)# deny tcp any host 10.10.10.2 eq 80 
+R1(config-ext-nacl)# permit tcp any host 10.10.10.2 eq 443
+R1(config-ext-nacl)# permit ip any any
+
+apply to router:
+=================
+R1(config)# interface S0/0/0
+R1(config-if)# ip access-group HTTPS_ONLY out
+
+remove extended access-list
+===========================
+R1(config)# no ip access-list extended <name>
+R1(config)# no ip access-group HTTPS_ONLY out
+
+static route on router
+==================
+R1(config)# ip route 0.0.0.0 0.0.0.0 s0/0/0
+
+static route on ISP Router
+==========================
+ISP(config)# ip route 0.0.0.0 0.0.0.0 s?/?/?
+ISP(config)# ip route 0.0.0.0 0.0.0.0 s?/?/?
+ISP(config)# ip route 0.0.0.0 0.0.0.0 s?/?/?
+
+
+remove IP route
+===============
+RI(config)# no ip route 0.0.0.0 0.0.0.0 10.10.10.2
+
+Enable LLDP on all Cisco network devices
+==========================================
+SW-1(config)# lldp run
+
+show lldp
+==========
+SW-1# show lldp 
+SW-1# show lldp neighbors
+SW-1# show lldp neighbors details
+
+Configure multi-area OSPFv2 between the multilayer switches and R1.
+===================================================================
+R1(config)# router ospf 1
+R1(config-router)# router-id 1.1.1.1
+R1(config-router)# network 22.22.22.176 0.0.0.3 area 0 (22.22.22.176/30)
+R1(config-router)# network 22.22.22.180 0.0.0.3 area 0 (22.22.22.180/30)
+R1(config-router)# network 22.22.22.184 0.0.0.3 area 0 (22.22.22.184/30)
+
+SW-1(config)# router ospf 1
+SW-1(config-router)# router-id 2.2.2.2
+SW-1(config-router)# network 22.22.22.180 0.0.0.3 area 0 (22.22.22.180/30)
+SW-1(config-router)# network 22.22.22.188 0.0.0.3 area 1 (22.22.22.188/30)
+SW-1(config-router)# network 22.22.22.160 0.0.0.15 area 0 
+
+SW-2(config)# router ospf 1
+SW-2(config-router)# router-id 3.3.3.3
+SW-2(config-router)# network 22.22.22.184 0.0.0.3 area 0 (22.22.22.184/30)
+SW-2(config-router)# network 22.22.22.188 0.0.0.3 area 1 (22.22.22.188/30)
+SW-2(config-router)# network 22.22.22.128 0.0.0.31 area 0
+
+show ip route
+==============
+show ip route
+show ip ospf neighbor
+
+Task 10 – Inter-routing between all the sites and Site to Site VPN
+====================================================================
+ISP(config)# int s0/1/0
+ISP(config-if)# ip address 22.22.22.178 255.255.255.252
+ISP(config)# ip route 22.22.22.176 255.255.255.252 s0/1/0 x
+ISP(config)# ip route 0.0.0.0 0.0.0.0 s0/1/0
+
+ISP(config)# router ospf 1
+ISP(config-router)# router-id 10.10.10.10
+ISP(config-router)# network 10.10.10.0 0.0.0.255 area 0 (10.10.10.0 /24)
+ISP(config-router)# network 22.22.22.176 0.0.0.3 area 0 (22.22.22.176 /30)
+
+Enable security technology package
+===================================
+R1 Peer ip address: 22.22.22.178 /30
+traffic to be encrypted: access-list 110 (source 22.22.22.180 0.0.0.3 dest 22.22.22.176 0.0.0.3)x
+traffic to be encrypted: access-list 110 (source 22.22.22.184 0.0.0.3 dest 22.22.22.176 0.0.0.3)x
+
+
+ISP Peer ip address: 22.22.22.177 /30
+traffic to be encrypted: access-list 110 (source 22.22.22.176 0.0.0.3 dest 22.22.22.180 0.0.0.3)
+traffic to be encrypted: access-list 110 (source 22.22.22.176 0.0.0.3 dest 22.22.22.184 0.0.0.3)
+
+
+R1#show version
+R1(config)# license boot module c1900 technology-package securityk9
+
+Modify access-list (Site 3 router)
+==================================
+Router(config)#ip access-list extended 110
+Router(config-std-nacl)#no 10
+Router(config-std-nacl)#10 permit any
+Router(config-std-nacl)#no 20
+Router(config-std-nacl)#exit
+
+
+Modify access-list (ISP router)
+==================================
+Router(config)#ip access-list extended 110
+Router(config-std-nacl)#no 10
+Router(config-std-nacl)#10 permit ip any any
+Router(config-std-nacl)#no 20
+Router(config-std-nacl)#exit
+
+Identify interesting traffic on R1.
+====================================
+R1(config)# access-list 110 permit ip 22.22.22.160 0.0.0.15 10.10.10.0 0.0.0.255 (VLAN100 22.22.22.160/28)
+R1(config)# access-list 110 permit ip 22.22.22.128 0.0.0.31 10.10.10.0 0.0.0.255 (VLAN200 22.22.22.128/27)
+
+
+Configure the IKE Phase 1 ISAKMP policy on R1.
+==============================================
+R1(config)# crypto isakmp policy 10
+R1(config-isakmp)# encryption aes 256
+R1(config-isakmp)# authentication pre-share
+R1(config-isakmp)# group 5
+R1(config-isakmp)# exit
+R1(config)# crypto isakmp key Cisco123 address 22.22.22.178
+
+*ISP(config)# crypto isakmp key Cisco123 address 22.22.22.177
+*ISP(config)# crypto isakmp key Cisco123 address 22.22.22.113
+
+
+remove crypto key
+=================
+no crypto isakmp * address 22.22.22.177
+no crypto isakmp * address 22.22.22.178
+
+Configure the IKE Phase 2 IPsec policy on R1.
+=============================================
+R1(config)# crypto ipsec transform-set VPN-SET esp-aes esp-sha-hmac
+R1(config)# crypto map VPN-MAP 10 ipsec-isakmp
+R1(config-crypto-map)# description VPN connection to ISP 
+R1(config-crypto-map)# set peer 22.22.22.178
+*ISP(config-crypto-map)# set peer 22.22.22.177
+*ISP(config-crypto-map)# set peer 22.22.22.113
+R1(config-crypto-map)# set transform-set VPN-SET
+R1(config-crypto-map)# match address 110
+R1(config-crypto-map)# exit
+
+Bind the VPN-MAP crypto map to the outgoing Serial 0/0/0 interface.
+==================================================================
+R1(config)# interface s0/0/0
+R1(config-if)# crypto map VPN-MAP
+
+Do for ISP
+==========
+
+
+Test if tunnel is working
+==========================
+show crypto ipsec sa 
+
+ping from one pc to another across tunnel
+
+show crypto ipsec sa 
+
+
+
+
+
+
+
+
+
+
+
+
+

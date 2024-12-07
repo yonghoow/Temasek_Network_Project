@@ -1,0 +1,14 @@
+Project presentation-Test cases for all sites
+=======================================================
+1) Ping from SiteX PC1 to Server N1
+2) Use web browser from SiteX PC1 for HTTPS & HTTP access to Server N1
+3) Show VLAN on all switches - Task3,
+4) Show run on Switch3  - Task5
+5) Show Etherchannel summary on all Switches - Task4
+6) Show Standby on Switch1 and Switch2 - Task6
+7) Show Access list on R1 (for blocking HTTP) - Task7
+8) Show LLDP on all devices - Task8
+9) Show IP osfp neighbours for R1, Switch1, Switch2 - Task9
+10) Show IP route for R1, Switch1, Switch2 - Task9
+11) Show show crypto ipsec sa for R1 and ISP routers - Task10
+12) Each member to answer some technical questions relating to this module
